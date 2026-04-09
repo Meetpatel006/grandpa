@@ -1,5 +1,4 @@
 import { api } from "@/convex/_generated/api";
-import { Link } from "expo-router";
 import MagicTextModule from "@/modules/magic-text";
 import { useEmergency } from "@/providers/emergency-provider";
 import { useMutation, useQuery } from "convex/react";
@@ -13,16 +12,26 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { mockReceiverData, mockReceiverSession } from "@/utils/mocks";
 
-export default function ReceiverScreen() {
+const USE_MOCK = false; // Set to true for testing with mock data
+const MOCK_CONNECTED = false;
+
+const mockReceiverConfig = {
+  magicKeyword: mockReceiverData.magicKeyword,
+  lastTriggerAt: mockReceiverData.lastTriggerAt,
+  lastTriggerSource: mockReceiverData.lastTriggerSource,
+  lastHandledCommandToken: null,
+};
+
+export default function ReceiverHomeScreen() {
   const {
     ready,
     deviceId,
     receiverConfig,
-    saveReceiverConfig,
     clearReceiverConfig,
     setLastHandledCommandToken,
     triggerEmergencyOverride,
@@ -30,37 +39,38 @@ export default function ReceiverScreen() {
     refreshSnapshot,
   } = useEmergency();
 
-  const [inviteCode, setInviteCode] = useState(receiverConfig?.inviteCode ?? "");
-  const [receiverLabel, setReceiverLabel] = useState(receiverConfig?.label ?? "Living room phone");
-  const [vipNumbersText, setVipNumbersText] = useState(
-    receiverConfig?.vipNumbers.join(", ") ?? "",
-  );
-  const [busyAction, setBusyAction] = useState<"join" | "save" | "leave" | null>(null);
+  const [busyAction, setBusyAction] = useState<"leave" | null>(null);
   const [androidAccess, setAndroidAccess] = useState({
     sms: Platform.OS !== "android",
     phone: Platform.OS !== "android",
     callLog: Platform.OS !== "android",
     dnd: Platform.OS !== "android",
   });
+  const [showSetup, setShowSetup] = useState(false);
+  const [useMockData, setUseMockData] = useState(USE_MOCK);
 
-  const joinGroup = useMutation(api.emergency.joinGroup);
-  const leaveGroup = useMutation(api.emergency.leaveGroup);
-  const heartbeat = useMutation(api.emergency.heartbeat);
-  const acknowledgeCommand = useMutation(api.emergency.acknowledgeCommand);
+  const leaveGroup = useMutation(useMockData ? "skip" as any : api.emergency.leaveGroup);
+  const heartbeat = useMutation(useMockData ? "skip" as any : api.emergency.heartbeat);
+  const acknowledgeCommand = useMutation(useMockData ? "skip" as any : api.emergency.acknowledgeCommand);
 
-  const session = useQuery(
-    api.emergency.receiverSession,
-    ready && deviceId ? { deviceId } : "skip",
+  const realSession = useQuery(
+    useMockData ? "skip" as any : api.emergency.receiverSession,
+    (ready && deviceId && !useMockData) ? { deviceId } : "skip"
   );
+
+  const mockSession = mockReceiverSession;
+
+  const session = useMockData ? mockSession : realSession;
+  const isConnected = !!session;
+
+  const config = useMockData ? mockReceiverConfig : receiverConfig;
 
   useEffect(() => {
     void persistRolePreference("receive");
   }, [persistRolePreference]);
 
   useEffect(() => {
-    if (Platform.OS !== "android") {
-      return;
-    }
+    if (Platform.OS !== "android") return;
 
     let active = true;
 
@@ -72,16 +82,9 @@ export default function ReceiverScreen() {
         MagicTextModule.hasNotificationPolicyAccessAsync(),
       ]);
 
-      if (!active) {
-        return;
-      }
+      if (!active) return;
 
-      setAndroidAccess({
-        sms,
-        phone,
-        callLog,
-        dnd: dnd.granted,
-      });
+      setAndroidAccess({ sms, phone, callLog, dnd: dnd.granted });
     })();
 
     return () => {
@@ -90,17 +93,11 @@ export default function ReceiverScreen() {
   }, [refreshSnapshot]);
 
   useEffect(() => {
-    setInviteCode(receiverConfig?.inviteCode ?? "");
-    setReceiverLabel(receiverConfig?.label ?? "Living room phone");
-    setVipNumbersText(receiverConfig?.vipNumbers.join(", ") ?? "");
-  }, [receiverConfig]);
+    if (!session?.groupId || !deviceId) return;
 
-  useEffect(() => {
-    if (!session?.groupId || !deviceId) {
-      return;
-    }
-
-    const sendHeartbeat = (connectionState: "connecting" | "connected" | "background") => {
+    const sendHeartbeat = (
+      connectionState: "connecting" | "connected" | "background"
+    ) => {
       void heartbeat({
         groupId: session.groupId,
         deviceId,
@@ -126,28 +123,21 @@ export default function ReceiverScreen() {
   }, [deviceId, heartbeat, session?.groupId]);
 
   useEffect(() => {
-    if (!session?.groupId || !deviceId || !session.latestCommand) {
-      return;
-    }
+    if (!session?.groupId || !deviceId || !session.latestCommand) return;
 
     const latestCommand = session.latestCommand;
-
     const nativeToken = receiverConfig?.lastHandledCommandToken ?? null;
     const shouldHandle =
       !latestCommand.alreadyHandled &&
       latestCommand.token !== nativeToken;
 
-    if (!shouldHandle) {
-      return;
-    }
+    if (!shouldHandle) return;
 
     let active = true;
 
     void (async () => {
       const result = await triggerEmergencyOverride("convex");
-      if (!active || !result.executed) {
-        return;
-      }
+      if (!active || !result.executed) return;
 
       await setLastHandledCommandToken(latestCommand.token);
       await acknowledgeCommand({
@@ -159,7 +149,7 @@ export default function ReceiverScreen() {
     })().catch((error) => {
       Alert.alert(
         "Realtime unmute failed",
-        error instanceof Error ? error.message : "Try again.",
+        error instanceof Error ? error.message : "Try again."
       );
     });
 
@@ -176,19 +166,14 @@ export default function ReceiverScreen() {
     triggerEmergencyOverride,
   ]);
 
-  const vipNumbers = useMemo(
-    () =>
-      vipNumbersText
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean),
-    [vipNumbersText],
-  );
+  useEffect(() => {
+    if (session) {
+      setShowSetup(false);
+    }
+  }, [session]);
 
   const requestAndroidFallbackAccess = async () => {
-    if (Platform.OS !== "android") {
-      return true;
-    }
+    if (Platform.OS !== "android") return true;
 
     const permissionResult = await PermissionsAndroid.requestMultiple([
       PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
@@ -216,93 +201,20 @@ export default function ReceiverScreen() {
     if (!nextAccess.dnd) {
       Alert.alert(
         "Allow Do Not Disturb access",
-        "Android 12 requires special access to override silent mode. Tap OK to open the system settings screen for this permission.",
+        "Android 12 requires special access to override silent mode.",
         [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
+          { text: "Cancel", style: "cancel" },
           {
             text: "Open settings",
             onPress: () => {
               void MagicTextModule.openNotificationPolicyAccessSettingsAsync();
             },
           },
-        ],
+        ]
       );
     }
 
     return nextAccess.sms && nextAccess.phone;
-  };
-
-  const handleJoin = async () => {
-    if (!deviceId) {
-      return;
-    }
-
-    if (!inviteCode.trim() || !receiverLabel.trim()) {
-      Alert.alert("Missing information", "Add an invite code and receiver label.");
-      return;
-    }
-
-    const normalizedInviteCode = inviteCode.trim().toUpperCase();
-    if (normalizedInviteCode.length !== 6) {
-      Alert.alert("Invalid code", "Invite codes are 6 characters. Use the code shown on the sender screen.");
-      return;
-    }
-
-    await requestAndroidFallbackAccess();
-
-    setBusyAction("join");
-    try {
-      const result = await joinGroup({
-        inviteCode: normalizedInviteCode,
-        deviceId,
-        receiverLabel: receiverLabel.trim(),
-        platform: Platform.OS,
-      });
-
-      await saveReceiverConfig({
-        groupId: result.groupId,
-        inviteCode: result.inviteCode,
-        label: receiverLabel.trim(),
-        vipNumbers,
-      });
-
-      Alert.alert(
-        "Receiver connected",
-        "Realtime Convex sync is active. SMS and VIP call fallbacks are stored locally.",
-      );
-    } catch (error) {
-      Alert.alert("Join failed", error instanceof Error ? error.message : "Try again.");
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleSaveFallbacks = async () => {
-    if (!session?.groupId || !session.inviteCode || !deviceId) {
-      return;
-    }
-
-    setBusyAction("save");
-    try {
-      await joinGroup({
-        inviteCode: session.inviteCode,
-        deviceId,
-        receiverLabel: receiverLabel.trim(),
-        platform: Platform.OS,
-      });
-      await saveReceiverConfig({
-        groupId: session.groupId,
-        inviteCode: session.inviteCode,
-        label: receiverLabel.trim(),
-        vipNumbers,
-      });
-      Alert.alert("Fallbacks saved", "VIP callers and receiver metadata are updated.");
-    } finally {
-      setBusyAction(null);
-    }
   };
 
   const handleLeave = async () => {
@@ -330,15 +242,55 @@ export default function ReceiverScreen() {
     );
   }
 
+  if (!session && !showSetup) {
+    return (
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.heroSection}>
+            <Text style={styles.eyebrow}>Welcome back</Text>
+            <Text style={styles.heroTitle}>Not connected</Text>
+            <Text style={styles.heroSubtitle}>
+              Join a sender group to receive unmute commands.
+            </Text>
+          </View>
+
+          <View style={styles.quickAction}>
+            <Pressable
+              style={styles.primaryButton}
+              onPress={() => {
+                if (USE_MOCK) {
+                  setUseMockData(true);
+                } else {
+                  setShowSetup(true);
+                }
+              }}
+            >
+              <Text style={styles.primaryButtonText}>
+                {USE_MOCK ? "Mock data" : "Join a group"}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={() => setUseMockData(false)}
+            >
+              <Text style={styles.secondaryButtonText}>Real data</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {!session ? (
+        {showSetup || !session ? (
           <View style={styles.heroSection}>
-            <Text style={styles.eyebrow}>Receiver mode</Text>
-            <Text style={styles.heroTitle}>Stay ready to unmute</Text>
+            <Text style={styles.eyebrow}>Not connected</Text>
+            <Text style={styles.heroTitle}>Join a group</Text>
             <Text style={styles.heroSubtitle}>
-              Join a group to receive unmute commands via Convex. SMS and VIP calls work as offline fallbacks.
+              Go to setup to connect to a sender group.
             </Text>
           </View>
         ) : (
@@ -351,107 +303,76 @@ export default function ReceiverScreen() {
           </View>
         )}
 
-        {!session ? (
-          <View style={styles.formPanel}>
-            <Text style={styles.fieldLabel}>Invite code</Text>
-            <TextInput
-              value={inviteCode}
-              onChangeText={setInviteCode}
-              autoCapitalize="characters"
-              placeholder="AB12CD"
-              placeholderTextColor="#666666"
-              style={styles.input}
-            />
-
-            <Text style={styles.fieldLabel}>Receiver label</Text>
-            <TextInput
-              value={receiverLabel}
-              onChangeText={setReceiverLabel}
-              placeholder="Living room phone"
-              placeholderTextColor="#666666"
-              style={styles.input}
-            />
-
-            <Link href="/receiver/numbers" asChild>
-              <Pressable style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Next: Add VIP numbers</Text>
-              </Pressable>
-            </Link>
-          </View>
-        ) : (
+        {session && !showSetup && (
           <View style={styles.contentStack}>
             {Platform.OS === "android" && (
               <View style={styles.infoPanel}>
-                <Text style={styles.panelTitle}>Android fallback access</Text>
-                <Text style={styles.statusLine}>
-                  SMS: {androidAccess.sms ? "Granted" : "Missing"}
-                </Text>
-                <Text style={styles.statusLine}>
-                  Phone: {androidAccess.phone ? "Granted" : "Missing"}
-                </Text>
-                <Text style={styles.statusLine}>
-                  DND: {androidAccess.dnd ? "Granted" : "Missing"}
-                </Text>
-                <Pressable style={styles.secondaryButton} onPress={requestAndroidFallbackAccess}>
+                <Text style={styles.panelTitle}>Android access</Text>
+                <View style={styles.statusRow}>
+                  <Ionicons
+                    name={androidAccess.sms ? "checkmark-circle" : "alert-circle"}
+                    size={18}
+                    color={androidAccess.sms ? "#000000" : "#666666"}
+                  />
+                  <Text style={styles.statusText}>SMS</Text>
+                </View>
+                <View style={styles.statusRow}>
+                  <Ionicons
+                    name={androidAccess.phone ? "checkmark-circle" : "alert-circle"}
+                    size={18}
+                    color={androidAccess.phone ? "#000000" : "#666666"}
+                  />
+                  <Text style={styles.statusText}>Phone state</Text>
+                </View>
+                <View style={styles.statusRow}>
+                  <Ionicons
+                    name={androidAccess.dnd ? "checkmark-circle" : "alert-circle"}
+                    size={18}
+                    color={androidAccess.dnd ? "#000000" : "#666666"}
+                  />
+                  <Text style={styles.statusText}>DND override</Text>
+                </View>
+                <Pressable
+                  style={styles.secondaryButton}
+                  onPress={requestAndroidFallbackAccess}
+                >
                   <Text style={styles.secondaryButtonText}>Request access</Text>
                 </Pressable>
               </View>
             )}
 
             <View style={styles.infoPanel}>
-              <Text style={styles.panelTitle}>Session info</Text>
+              <Text style={styles.panelTitle}>Status</Text>
               <View style={styles.row}>
                 <Text style={styles.metaLabel}>Magic text</Text>
-                <Text style={styles.metaValue}>{receiverConfig?.magicKeyword ?? "#UNMUTE#"}</Text>
+                <Text style={styles.metaValue}>
+                  {config?.magicKeyword ?? "#UNMUTE#"}
+                </Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.metaLabel}>Last override</Text>
+                <Text style={styles.metaLabel}>Last trigger</Text>
                 <Text style={styles.metaValue}>
-                  {receiverConfig?.lastTriggerAt
-                    ? `${receiverConfig.lastTriggerSource ?? "unknown"} at ${new Date(
-                        receiverConfig.lastTriggerAt,
+                  {config?.lastTriggerAt
+                    ? `${config.lastTriggerSource ?? "unknown"} at ${new Date(
+                        config.lastTriggerAt
                       ).toLocaleTimeString()}`
                     : "None yet"}
                 </Text>
               </View>
-            </View>
-
-            <View style={styles.formPanel}>
-              <Text style={styles.panelTitle}>Fallback settings</Text>
-              <Text style={styles.fieldLabel}>Receiver label</Text>
-              <TextInput
-                value={receiverLabel}
-                onChangeText={setReceiverLabel}
-                placeholder="Living room phone"
-                placeholderTextColor="#666666"
-                style={styles.input}
-              />
-              <Text style={styles.fieldLabel}>VIP caller numbers</Text>
-              <TextInput
-                value={vipNumbersText}
-                onChangeText={setVipNumbersText}
-                placeholder="+1 555 123 4567, +1 555 987 6543"
-                placeholderTextColor="#666666"
-                style={[styles.input, styles.textArea]}
-                multiline
-              />
-              <Pressable
-                style={[styles.primaryButton, busyAction === "save" && styles.buttonDisabled]}
-                disabled={busyAction !== null}
-                onPress={handleSaveFallbacks}
-              >
-                <Text style={styles.primaryButtonText}>
-                  {busyAction === "save" ? "Saving..." : "Save settings"}
+              <View style={styles.row}>
+                <Text style={styles.metaLabel}>Latest token</Text>
+                <Text style={styles.metaValue}>
+                  {session?.latestCommand?.token ?? "Waiting"}
                 </Text>
-              </Pressable>
+              </View>
             </View>
 
-            <View style={styles.infoPanel}>
-              <Text style={styles.statusLine}>
-                Latest token: {session.latestCommand?.token ?? "Waiting"}
-              </Text>
+            <View style={styles.actionsPanel}>
               <Pressable
-                style={[styles.secondaryButton, busyAction === "leave" && styles.buttonDisabled]}
+                style={[
+                  styles.secondaryButton,
+                  busyAction === "leave" && styles.buttonDisabled,
+                ]}
                 disabled={busyAction !== null}
                 onPress={handleLeave}
               >
@@ -460,6 +381,17 @@ export default function ReceiverScreen() {
                 </Text>
               </Pressable>
             </View>
+          </View>
+        )}
+
+        {showSetup && (
+          <View style={styles.formPanel}>
+            <Pressable
+              style={styles.primaryButton}
+              onPress={() => {}}
+            >
+              <Text style={styles.primaryButtonText}>Go to setup</Text>
+            </Pressable>
           </View>
         )}
       </ScrollView>
@@ -512,6 +444,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: 380,
   },
+  quickAction: {
+    gap: 14,
+  },
   formPanel: {
     gap: 14,
   },
@@ -543,10 +478,6 @@ const styles = StyleSheet.create({
     color: "#000000",
     fontSize: 17,
   },
-  textArea: {
-    minHeight: 92,
-    textAlignVertical: "top",
-  },
   primaryButton: {
     backgroundColor: "#000000",
     borderRadius: 18,
@@ -577,7 +508,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
+    alignItems: "center",
   },
   metaLabel: {
     color: "#666666",
@@ -585,14 +516,31 @@ const styles = StyleSheet.create({
   },
   metaValue: {
     color: "#000000",
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
-    flexShrink: 1,
-    textAlign: "right",
+  },
+  emptyState: {
+    color: "#666666",
+    fontSize: 15,
+    lineHeight: 21,
   },
   statusLine: {
     color: "#666666",
     fontSize: 15,
     lineHeight: 21,
+  },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 8,
+  },
+  statusText: {
+    color: "#000000",
+    fontSize: 16,
+  },
+  actionsPanel: {
+    gap: 12,
+    marginBottom: 30,
   },
 });

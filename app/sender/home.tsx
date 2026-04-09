@@ -1,4 +1,5 @@
 import { api } from "@/convex/_generated/api";
+import { Link } from "expo-router";
 import { useEmergency } from "@/providers/emergency-provider";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
@@ -13,20 +14,45 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { mockSenderData } from "@/utils/mocks";
 
 const PRESENCE_TTL_MS = 30_000;
+const USE_MOCK = false; /* Set to true for testing with mock data */
+const MOCK_CONNECTED = false;
 
-export default function SenderScreen() {
+const SENDER_LABELS: Record<string, string> = {
+  "Primary sender": "Main caregiver or family contact",
+  "Kitchen sender": "Secondary device in main living area",
+  "Work sender": "Work or office device",
+};
+
+const getLabelDescription = (label: string): string => {
+  const lower = label.toLowerCase();
+  for (const key of Object.keys(SENDER_LABELS)) {
+    if (lower.includes(key.toLowerCase())) {
+      return SENDER_LABELS[key];
+    }
+  }
+  return "This device can send emergency unmute commands";
+};
+
+export default function SenderHomeScreen() {
   const { ready, deviceId, persistRolePreference } = useEmergency();
 
   const [adminLabel, setAdminLabel] = useState("Primary sender");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [busyAction, setBusyAction] = useState<"create" | "all" | "specific" | null>(null);
+  const [showSetup, setShowSetup] = useState(false);
+  const [userConnected, setUserConnected] = useState(MOCK_CONNECTED);
+  const [useMockData, setUseMockData] = useState(USE_MOCK);
 
-  const dashboard = useQuery(
-    api.emergency.senderDashboard,
-    ready && deviceId ? { adminDeviceId: deviceId } : "skip",
+  const realDashboard = useQuery(
+    useMockData ? "skip" as any : api.emergency.senderDashboard,
+    (ready && deviceId && !useMockData) ? { adminDeviceId: deviceId } : "skip"
   );
+
+  const dashboard = useMockData ? mockSenderData : realDashboard;
 
   const createGroup = useMutation(api.emergency.createGroup);
   const sendUnmute = useMutation(api.emergency.sendUnmute);
@@ -43,9 +69,11 @@ export default function SenderScreen() {
     }
 
     setSelectedIds((current) =>
-      current.filter((deviceIdToKeep) =>
-        dashboard.receivers.some(({ deviceId: receiverId }) => receiverId === deviceIdToKeep),
-      ),
+      current.filter((deviceIdToKeep: string) =>
+        dashboard.receivers.some(
+          ({ deviceId: receiverId }: { deviceId: string }) => receiverId === deviceIdToKeep
+        )
+      )
     );
   }, [dashboard?.receivers]);
 
@@ -54,7 +82,9 @@ export default function SenderScreen() {
       return;
     }
 
-    const sendHeartbeat = (connectionState: "connecting" | "connected" | "background") => {
+    const sendHeartbeat = (
+      connectionState: "connecting" | "connected" | "background"
+    ) => {
       void heartbeat({
         groupId: dashboard.groupId,
         deviceId,
@@ -79,8 +109,8 @@ export default function SenderScreen() {
     };
   }, [dashboard?.groupId, deviceId, heartbeat]);
 
-  const receivers = useMemo(() => {
-    return (dashboard?.receivers ?? []).map((receiver) => ({
+const receivers = useMemo(() => {
+    return (dashboard?.receivers ?? []).map((receiver: any) => ({
       ...receiver,
       online:
         receiver.lastHeartbeatAt !== null &&
@@ -88,11 +118,14 @@ export default function SenderScreen() {
     }));
   }, [dashboard?.receivers]);
 
-  const handleCreateGroup = async () => {
-    if (!deviceId) {
-      return;
+  useEffect(() => {
+    if (dashboard) {
+      setShowSetup(false);
     }
+  }, [dashboard]);
 
+  const handleCreateGroup = async () => {
+    if (!deviceId) return;
     if (!adminLabel.trim()) {
       Alert.alert("Add a sender label", "Use a clear name for the admin device.");
       return;
@@ -113,9 +146,7 @@ export default function SenderScreen() {
   };
 
   const handleSend = async (targetMode: "all" | "specific") => {
-    if (!dashboard?.groupId || !deviceId) {
-      return;
-    }
+    if (!dashboard?.groupId || !deviceId) return;
 
     if (targetMode === "specific" && selectedIds.length === 0) {
       Alert.alert("Select receivers", "Choose at least one receiver to target.");
@@ -134,7 +165,7 @@ export default function SenderScreen() {
         "Command broadcast",
         targetMode === "all"
           ? "Every connected receiver was targeted."
-          : "The selected receivers were targeted.",
+          : "The selected receivers were targeted."
       );
     } catch (error) {
       Alert.alert("Command failed", error instanceof Error ? error.message : "Try again.");
@@ -147,7 +178,7 @@ export default function SenderScreen() {
     setSelectedIds((current) =>
       current.includes(receiverId)
         ? current.filter((id) => id !== receiverId)
-        : [...current, receiverId],
+        : [...current, receiverId]
     );
   };
 
@@ -159,15 +190,49 @@ export default function SenderScreen() {
     );
   }
 
+  if (!dashboard && !showSetup) {
+    return (
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.heroSection}>
+            <Text style={styles.eyebrow}>Welcome back</Text>
+            <Text style={styles.heroTitle}>No active group</Text>
+            <Text style={styles.heroSubtitle}>
+              Create a new group to send unmute commands to receivers.
+            </Text>
+          </View>
+
+          <View style={styles.quickAction}>
+            <Pressable
+              style={[styles.primaryButton, busyAction === "create" && styles.buttonDisabled]}
+              disabled={busyAction === "create"}
+              onPress={() => {
+                if (USE_MOCK) {
+                  setUserConnected(true);
+                } else {
+                  setShowSetup(true);
+                }
+              }}
+            >
+              <Text style={styles.primaryButtonText}>
+                {USE_MOCK ? "Use mock connection" : "Create new group"}
+              </Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {!dashboard ? (
+        {showSetup || !dashboard ? (
           <View style={styles.heroSection}>
-            <Text style={styles.eyebrow}>Sender console</Text>
-            <Text style={styles.heroTitle}>Run the emergency group</Text>
+            <Text style={styles.eyebrow}>Sender setup</Text>
+            <Text style={styles.heroTitle}>Create a group</Text>
             <Text style={styles.heroSubtitle}>
-              Create a group to send unmute commands to receivers. SMS and VIP calls remain available as offline fallbacks.
+              Set up a name for this sender device.
             </Text>
           </View>
         ) : (
@@ -180,7 +245,7 @@ export default function SenderScreen() {
           </View>
         )}
 
-        {!dashboard ? (
+        {(showSetup || !dashboard) && (
           <View style={styles.formPanel}>
             <Text style={styles.fieldLabel}>Sender label</Text>
             <TextInput
@@ -190,6 +255,19 @@ export default function SenderScreen() {
               placeholderTextColor="#666666"
               style={styles.input}
             />
+            <Text style={styles.labelHelp}>{getLabelDescription(adminLabel)}</Text>
+            
+            {USE_MOCK && (
+              <Pressable
+                style={[styles.toggleButton, useMockData && styles.toggleButtonActive]}
+                onPress={() => setUseMockData(!useMockData)}
+              >
+                <Text style={[styles.toggleButtonText, useMockData && styles.toggleButtonTextActive]}>
+                  {useMockData ? "Mock data ON" : "Mock data OFF"}
+                </Text>
+              </Pressable>
+            )}
+
             <Pressable
               style={[styles.primaryButton, busyAction === "create" && styles.buttonDisabled]}
               disabled={busyAction === "create"}
@@ -200,7 +278,9 @@ export default function SenderScreen() {
               </Text>
             </Pressable>
           </View>
-        ) : (
+        )}
+
+        {dashboard && !showSetup && (
           <View style={styles.contentStack}>
             <View style={styles.infoPanel}>
               <View style={styles.row}>
@@ -220,17 +300,23 @@ export default function SenderScreen() {
                   No receivers have joined yet. Share the invite code to connect one.
                 </Text>
               ) : (
-                receivers.map((receiver) => (
+                receivers.map((receiver: any) => (
                   <Pressable
                     key={receiver.deviceId}
                     onPress={() => toggleReceiver(receiver.deviceId)}
                     style={[
                       styles.receiverRow,
-                      selectedIds.includes(receiver.deviceId) && styles.receiverRowSelected,
+                      selectedIds.includes(receiver.deviceId) &&
+                        styles.receiverRowSelected,
                     ]}
                   >
                     <View style={styles.receiverCopy}>
                       <Text style={styles.receiverLabel}>{receiver.label}</Text>
+                      <Text style={styles.receiverMeta}>
+                        {((receiver as any).phoneNumbers?.length > 0)
+                          ? (receiver as any).phoneNumbers.join(", ")
+                          : "No numbers"}
+                      </Text>
                       <Text style={styles.receiverMeta}>
                         {receiver.online ? "Online" : "Stale"} · {receiver.connectionState}
                       </Text>
@@ -238,7 +324,8 @@ export default function SenderScreen() {
                     <View
                       style={[
                         styles.selectionDot,
-                        selectedIds.includes(receiver.deviceId) && styles.selectionDotActive,
+                        selectedIds.includes(receiver.deviceId) &&
+                          styles.selectionDotActive,
                       ]}
                     />
                   </Pressable>
@@ -257,7 +344,10 @@ export default function SenderScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                style={[styles.secondaryButton, busyAction === "specific" && styles.buttonDisabled]}
+                style={[
+                  styles.secondaryButton,
+                  busyAction === "specific" && styles.buttonDisabled,
+                ]}
                 disabled={busyAction !== null}
                 onPress={() => handleSend("specific")}
               >
@@ -320,30 +410,20 @@ const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: 380,
   },
+  quickAction: {
+    gap: 14,
+  },
   formPanel: {
     gap: 14,
   },
   infoPanel: {
     gap: 12,
-    paddingVertical: 16,
   },
   contentStack: {
     gap: 20,
   },
   receiversPanel: {
     gap: 12,
-  },
-  panel: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 22,
-    padding: 18,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: "#000000",
-  },
-  actionsPanel: {
-    gap: 12,
-    marginTop: 10,
   },
   panelTitle: {
     color: "#000000",
@@ -363,9 +443,9 @@ const styles = StyleSheet.create({
     borderColor: "#000000",
     paddingHorizontal: 16,
     paddingVertical: 14,
-    fontSize: 17,
-    color: "#000000",
     backgroundColor: "#FFFFFF",
+    color: "#000000",
+    fontSize: 17,
   },
   primaryButton: {
     backgroundColor: "#000000",
@@ -450,5 +530,35 @@ const styles = StyleSheet.create({
   selectionDotActive: {
     borderColor: "#000000",
     backgroundColor: "#000000",
+  },
+  actionsPanel: {
+    gap: 12,
+    marginBottom: 30,
+  },
+  labelHelp: {
+    color: "#666666",
+    fontSize: 14,
+    fontStyle: "italic",
+    marginTop: -10,
+  },
+  toggleButton: {
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#F5F5F5",
+    borderWidth: 1,
+    borderColor: "#000000",
+    alignSelf: "flex-start",
+  },
+  toggleButtonActive: {
+    backgroundColor: "#000000",
+  },
+  toggleButtonText: {
+    color: "#000000",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  toggleButtonTextActive: {
+    color: "#FFFFFF",
   },
 });

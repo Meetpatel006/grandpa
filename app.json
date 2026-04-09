@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSContactsUsageDescription": "This app needs access to contacts to add emergency contact numbers."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +25,8 @@
         "ACCESS_NOTIFICATION_POLICY",
         "RECEIVE_SMS",
         "READ_PHONE_STATE",
-        "READ_CALL_LOG"
+        "READ_CALL_LOG",
+        "READ_CONTACTS"
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -34,6 +38,23 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 24,
+            "permissions": [
+              "android.permission.READ_CONTACTS",
+              "android.permission.RECEIVE_SMS",
+              "android.permission.READ_PHONE_STATE",
+              "android.permission.READ_CALL_LOG",
+              "android.permission.ACCESS_NOTIFICATION_POLICY"
+            ]
+          }
+        }
+      ],
       "./withGrandpaManifest",
       [
         "expo-splash-screen",

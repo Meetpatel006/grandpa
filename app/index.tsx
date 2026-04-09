@@ -1,5 +1,6 @@
 import { Link } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function HomeScreen() {
   return (
@@ -13,26 +14,28 @@ export default function HomeScreen() {
         </Text>
       </View>
 
-      <View style={styles.cardStack}>
+      <View style={styles.buttonStack}>
         <Link href="/sender" asChild>
-          <TouchableOpacity style={[styles.card, styles.senderCard]}>
-            <Text style={styles.cardKicker}>Admin role</Text>
-            <Text style={styles.cardTitle}>Send</Text>
-            <Text style={styles.cardBody}>
-              Create a group, watch receivers connect in realtime, and trigger
-              unmute for one receiver or everyone.
-            </Text>
+          <TouchableOpacity activeOpacity={0.7} style={styles.button}>
+            <View style={styles.buttonContent}>
+              <View style={styles.buttonLeft}>
+                <Text style={styles.buttonKicker}>Admin role</Text>
+                <Text style={styles.buttonTitle}>Send</Text>
+              </View>
+              <Ionicons name="send" size={28} color="#FFFFFF" />
+            </View>
           </TouchableOpacity>
         </Link>
 
         <Link href="/receiver" asChild>
-          <TouchableOpacity style={[styles.card, styles.receiverCard]}>
-            <Text style={styles.cardKicker}>Listener role</Text>
-            <Text style={styles.cardTitle}>Receive</Text>
-            <Text style={styles.cardBody}>
-              Join a group, keep fallback settings on-device, and respond to live
-              or offline emergency overrides.
-            </Text>
+          <TouchableOpacity activeOpacity={0.7} style={styles.button}>
+            <View style={styles.buttonContent}>
+              <View style={styles.buttonLeft}>
+                <Text style={styles.buttonKicker}>Listener role</Text>
+                <Text style={styles.buttonTitle}>Receive</Text>
+              </View>
+              <Ionicons name="ear" size={28} color="#FFFFFF" />
+            </View>
           </TouchableOpacity>
         </Link>
       </View>
@@ -43,65 +46,74 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F3EFE5",
+    backgroundColor: "#FFFFFF",
     paddingHorizontal: 24,
     paddingVertical: 32,
-    justifyContent: "space-between",
+    justifyContent: "center",
+    alignItems: "center",
   },
   hero: {
     gap: 14,
-    marginTop: 48,
+    alignItems: "center",
   },
   eyebrow: {
-    color: "#9B4D29",
+    color: "#111111",
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   title: {
-    color: "#1E2A2F",
+    color: "#000000",
     fontSize: 38,
     fontWeight: "800",
     lineHeight: 44,
   },
   subtitle: {
-    color: "#4A5A63",
+    color: "#2F2F2F",
     fontSize: 17,
     lineHeight: 25,
     maxWidth: 420,
   },
-  cardStack: {
+  buttonStack: {
     gap: 16,
-    marginBottom: 36,
+    marginTop: 40,
+    width: "100%",
+    alignItems: "center",
   },
-  card: {
-    borderRadius: 28,
-    paddingHorizontal: 22,
-    paddingVertical: 26,
-    gap: 8,
+  button: {
+    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    backgroundColor: "#000000",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  senderCard: {
-    backgroundColor: "#B44C27",
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
   },
-  receiverCard: {
-    backgroundColor: "#244F46",
+  buttonLeft: {
+    gap: 4,
   },
-  cardKicker: {
-    color: "#F7E8DD",
+  buttonKicker: {
+    color: "#CCCCCC",
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 1,
     textTransform: "uppercase",
   },
-  cardTitle: {
+  buttonTitle: {
     color: "#FFFFFF",
     fontSize: 32,
     fontWeight: "800",
   },
-  cardBody: {
-    color: "#F5F5F5",
-    fontSize: 16,
-    lineHeight: 23,
-  },
-});
+  });
