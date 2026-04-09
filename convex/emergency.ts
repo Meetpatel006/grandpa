@@ -201,13 +201,16 @@ export const joinGroup = mutation({
     platform: v.string(),
   },
   handler: async (ctx, args) => {
+    const normalizedInviteCode = args.inviteCode.trim().toUpperCase();
     const group = await ctx.db
       .query("groups")
-      .withIndex("by_inviteCode", (q) => q.eq("inviteCode", args.inviteCode.trim().toUpperCase()))
+      .withIndex("by_inviteCode", (q) => q.eq("inviteCode", normalizedInviteCode))
       .unique();
 
     if (!group || group.status !== "active") {
-      throw new Error("Group not found.");
+      throw new Error(
+        `No active sender session found for code ${normalizedInviteCode}. Open Send on the other device and create a group first.`,
+      );
     }
 
     const now = Date.now();

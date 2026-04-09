@@ -153,10 +153,16 @@ export default function ReceiverScreen() {
       return;
     }
 
+    const normalizedInviteCode = inviteCode.trim().toUpperCase();
+    if (normalizedInviteCode.length !== 6) {
+      Alert.alert("Invalid code", "Invite codes are 6 characters. Use the code shown on the sender screen.");
+      return;
+    }
+
     setBusyAction("join");
     try {
       const result = await joinGroup({
-        inviteCode: inviteCode.trim().toUpperCase(),
+        inviteCode: normalizedInviteCode,
         deviceId,
         receiverLabel: receiverLabel.trim(),
         platform: Platform.OS,
