@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["MagicTextModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.magictext.MagicTextModule"]
+  }
+}

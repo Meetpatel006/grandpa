@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["VolumeModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.volume.VolumeModule"]
+  }
+}
