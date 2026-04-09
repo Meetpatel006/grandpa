@@ -1,4 +1,5 @@
 import {
+  AndroidPermissionAccess,
   InstallationSnapshot,
   ReceiverNativeConfig,
   TriggerOverrideResult,
@@ -80,6 +81,12 @@ const MagicTextModule = {
   },
   async getReceiverConfigAsync(): Promise<ReceiverNativeConfig> {
     return installationSnapshot.receiverConfig;
+  },
+  async hasNotificationPolicyAccessAsync(): Promise<AndroidPermissionAccess> {
+    return { granted: true };
+  },
+  async openNotificationPolicyAccessSettingsAsync(): Promise<void> {
+    return;
   },
 };
 

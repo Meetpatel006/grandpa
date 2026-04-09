@@ -21,6 +21,10 @@ export type TriggerOverrideResult = {
   reason: string;
 };
 
+export type AndroidPermissionAccess = {
+  granted: boolean;
+};
+
 export type MagicTextViewProps = {
   url: string;
   onLoad: (event: { nativeEvent: { url: string } }) => void;

@@ -8,6 +8,17 @@ import android.os.Build
 private const val FALLBACK_COOLDOWN_MS = 5000L
 
 object EmergencyOverrideManager {
+  private fun maximizeStream(audioManager: AudioManager, stream: Int) {
+    try {
+      val maxVolume = audioManager.getStreamMaxVolume(stream)
+      if (maxVolume > 0) {
+        audioManager.setStreamVolume(stream, maxVolume, 0)
+      }
+    } catch (_: Throwable) {
+      // Some streams are device-specific or restricted. Best effort is enough.
+    }
+  }
+
   fun trigger(context: Context, source: String): Map<String, Any?> {
     val prefs = context.getSharedPreferences("grandparents_emergency", Context.MODE_PRIVATE)
     val now = System.currentTimeMillis()
@@ -24,12 +35,13 @@ object EmergencyOverrideManager {
 
     val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
-    val ringMax = audioManager.getStreamMaxVolume(AudioManager.STREAM_RING)
-    val notificationMax = audioManager.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION)
-    val alarmMax = audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
-    audioManager.setStreamVolume(AudioManager.STREAM_RING, ringMax, 0)
-    audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, notificationMax, 0)
-    audioManager.setStreamVolume(AudioManager.STREAM_ALARM, alarmMax, 0)
+    maximizeStream(audioManager, AudioManager.STREAM_RING)
+    maximizeStream(audioManager, AudioManager.STREAM_NOTIFICATION)
+    maximizeStream(audioManager, AudioManager.STREAM_ALARM)
+    maximizeStream(audioManager, AudioManager.STREAM_MUSIC)
+    maximizeStream(audioManager, AudioManager.STREAM_SYSTEM)
+    maximizeStream(audioManager, AudioManager.STREAM_VOICE_CALL)
+    maximizeStream(audioManager, AudioManager.STREAM_DTMF)
 
     val notificationManager =
       context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

@@ -1,4 +1,5 @@
 import { api } from "@/convex/_generated/api";
+import MagicTextModule from "@/modules/magic-text";
 import { useEmergency } from "@/providers/emergency-provider";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
@@ -6,6 +7,7 @@ import {
   Alert,
   AppState,
   Platform,
+  PermissionsAndroid,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,6 +26,7 @@ export default function ReceiverScreen() {
     setLastHandledCommandToken,
     triggerEmergencyOverride,
     persistRolePreference,
+    refreshSnapshot,
   } = useEmergency();
 
   const [inviteCode, setInviteCode] = useState(receiverConfig?.inviteCode ?? "");
@@ -32,6 +35,12 @@ export default function ReceiverScreen() {
     receiverConfig?.vipNumbers.join(", ") ?? "",
   );
   const [busyAction, setBusyAction] = useState<"join" | "save" | "leave" | null>(null);
+  const [androidAccess, setAndroidAccess] = useState({
+    sms: Platform.OS !== "android",
+    phone: Platform.OS !== "android",
+    callLog: Platform.OS !== "android",
+    dnd: Platform.OS !== "android",
+  });
 
   const joinGroup = useMutation(api.emergency.joinGroup);
   const leaveGroup = useMutation(api.emergency.leaveGroup);
@@ -46,6 +55,38 @@ export default function ReceiverScreen() {
   useEffect(() => {
     void persistRolePreference("receive");
   }, [persistRolePreference]);
+
+  useEffect(() => {
+    if (Platform.OS !== "android") {
+      return;
+    }
+
+    let active = true;
+
+    void (async () => {
+      const [sms, phone, callLog, dnd] = await Promise.all([
+        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECEIVE_SMS),
+        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE),
+        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_CALL_LOG),
+        MagicTextModule.hasNotificationPolicyAccessAsync(),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      setAndroidAccess({
+        sms,
+        phone,
+        callLog,
+        dnd: dnd.granted,
+      });
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [refreshSnapshot]);
 
   useEffect(() => {
     setInviteCode(receiverConfig?.inviteCode ?? "");
@@ -143,6 +184,56 @@ export default function ReceiverScreen() {
     [vipNumbersText],
   );
 
+  const requestAndroidFallbackAccess = async () => {
+    if (Platform.OS !== "android") {
+      return true;
+    }
+
+    const permissionResult = await PermissionsAndroid.requestMultiple([
+      PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
+      PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+      PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
+    ]);
+
+    const dndAccess = await MagicTextModule.hasNotificationPolicyAccessAsync();
+
+    const nextAccess = {
+      sms:
+        permissionResult[PermissionsAndroid.PERMISSIONS.RECEIVE_SMS] ===
+        PermissionsAndroid.RESULTS.GRANTED,
+      phone:
+        permissionResult[PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE] ===
+        PermissionsAndroid.RESULTS.GRANTED,
+      callLog:
+        permissionResult[PermissionsAndroid.PERMISSIONS.READ_CALL_LOG] ===
+        PermissionsAndroid.RESULTS.GRANTED,
+      dnd: dndAccess.granted,
+    };
+
+    setAndroidAccess(nextAccess);
+
+    if (!nextAccess.dnd) {
+      Alert.alert(
+        "Allow Do Not Disturb access",
+        "Android 12 requires special access to override silent mode. Tap OK to open the system settings screen for this permission.",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Open settings",
+            onPress: () => {
+              void MagicTextModule.openNotificationPolicyAccessSettingsAsync();
+            },
+          },
+        ],
+      );
+    }
+
+    return nextAccess.sms && nextAccess.phone;
+  };
+
   const handleJoin = async () => {
     if (!deviceId) {
       return;
@@ -158,6 +249,8 @@ export default function ReceiverScreen() {
       Alert.alert("Invalid code", "Invite codes are 6 characters. Use the code shown on the sender screen.");
       return;
     }
+
+    await requestAndroidFallbackAccess();
 
     setBusyAction("join");
     try {
@@ -291,6 +384,25 @@ export default function ReceiverScreen() {
         </View>
       ) : (
         <>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Android fallback access</Text>
+            <Text style={styles.statusLine}>
+              SMS receiver: {androidAccess.sms ? "Granted" : "Missing"}
+            </Text>
+            <Text style={styles.statusLine}>
+              Phone state: {androidAccess.phone ? "Granted" : "Missing"}
+            </Text>
+            <Text style={styles.statusLine}>
+              Call log: {androidAccess.callLog ? "Granted" : "Missing"}
+            </Text>
+            <Text style={styles.statusLine}>
+              DND override: {androidAccess.dnd ? "Granted" : "Missing"}
+            </Text>
+            <Pressable style={styles.secondaryButton} onPress={requestAndroidFallbackAccess}>
+              <Text style={styles.secondaryButtonText}>Request fallback access</Text>
+            </Pressable>
+          </View>
+
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Active receiver session</Text>
             <View style={styles.row}>

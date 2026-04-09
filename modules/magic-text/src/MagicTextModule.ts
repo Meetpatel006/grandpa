@@ -1,6 +1,7 @@
 import { NativeModule, requireNativeModule } from "expo";
 
 import {
+  AndroidPermissionAccess,
   InstallationSnapshot,
   MagicTextModuleEvents,
   ReceiverNativeConfig,
@@ -19,6 +20,8 @@ declare class MagicTextModule extends NativeModule<MagicTextModuleEvents> {
   setLastHandledCommandTokenAsync(token: string): Promise<void>;
   triggerEmergencyOverrideAsync(source: string): Promise<TriggerOverrideResult>;
   getReceiverConfigAsync(): Promise<ReceiverNativeConfig>;
+  hasNotificationPolicyAccessAsync(): Promise<AndroidPermissionAccess>;
+  openNotificationPolicyAccessSettingsAsync(): Promise<void>;
 }
 
 export default requireNativeModule<MagicTextModule>("MagicText");

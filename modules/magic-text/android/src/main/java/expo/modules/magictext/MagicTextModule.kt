@@ -1,5 +1,9 @@
 package expo.modules.magictext
 
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -44,6 +48,22 @@ class MagicTextModule : Module() {
     AsyncFunction("getReceiverConfigAsync") {
       val context = appContext.reactContext ?: throw IllegalStateException("Context unavailable.")
       EmergencyPreferences.getReceiverConfig(context)
+    }
+
+    AsyncFunction("hasNotificationPolicyAccessAsync") {
+      val context = appContext.reactContext ?: throw IllegalStateException("Context unavailable.")
+      val notificationManager =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+      mapOf("granted" to notificationManager.isNotificationPolicyAccessGranted)
+    }
+
+    AsyncFunction("openNotificationPolicyAccessSettingsAsync") {
+      val context = appContext.reactContext ?: throw IllegalStateException("Context unavailable.")
+      val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      context.startActivity(intent)
+      null
     }
   }
 }
