@@ -1,6 +1,6 @@
 import * as Contacts from "expo-contacts";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { api } from "@/convex/_generated/api";
-import { Link } from "expo-router";
 import { useEmergency } from "@/providers/emergency-provider";
 import { useMutation } from "convex/react";
 import { useEffect, useState } from "react";
@@ -22,6 +22,12 @@ interface ContactNumber {
 }
 
 export default function ReceiverNumbersScreen() {
+  const params = useLocalSearchParams<{
+    inviteCode?: string;
+    receiverLabel?: string;
+  }>();
+  const router = useRouter();
+  
   const {
     ready,
     deviceId,
@@ -31,9 +37,11 @@ export default function ReceiverNumbersScreen() {
   } = useEmergency();
 
   const [receiverLabel, setReceiverLabel] = useState(
-    receiverConfig?.label ?? "Living room phone"
+    params.receiverLabel || receiverConfig?.label || "Living room phone"
   );
-  const [inviteCode, setInviteCode] = useState(receiverConfig?.inviteCode ?? "");
+  const [inviteCode, setInviteCode] = useState(
+    params.inviteCode || receiverConfig?.inviteCode || ""
+  );
   const [contactNumbers, setContactNumbers] = useState<ContactNumber[]>([
     { countryCode: "+1", phoneNumber: "" },
   ]);

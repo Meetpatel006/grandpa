@@ -1,5 +1,5 @@
 import { api } from "@/convex/_generated/api";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import MagicTextModule from "@/modules/magic-text";
 import { useEmergency } from "@/providers/emergency-provider";
 import { useMutation, useQuery } from "convex/react";
@@ -18,6 +18,7 @@ import {
 } from "react-native";
 
 export default function ReceiverScreen() {
+  const router = useRouter();
   const {
     ready,
     deviceId,
@@ -42,6 +43,16 @@ export default function ReceiverScreen() {
     callLog: Platform.OS !== "android",
     dnd: Platform.OS !== "android",
   });
+
+  const goToNumbers = () => {
+    router.push({
+      pathname: "/receiver/numbers",
+      params: {
+        inviteCode: inviteCode || receiverConfig?.inviteCode || "",
+        receiverLabel: receiverLabel || receiverConfig?.label || "",
+      },
+    });
+  };
 
   const joinGroup = useMutation(api.emergency.joinGroup);
   const leaveGroup = useMutation(api.emergency.leaveGroup);
@@ -372,11 +383,12 @@ export default function ReceiverScreen() {
               style={styles.input}
             />
 
-            <Link href="/receiver/numbers" asChild>
-              <Pressable style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Next: Add VIP numbers</Text>
-              </Pressable>
-            </Link>
+            <Pressable 
+              style={styles.secondaryButton}
+              onPress={goToNumbers}
+            >
+              <Text style={styles.secondaryButtonText}>Next: Add VIP numbers</Text>
+            </Pressable>
           </View>
         ) : (
           <View style={styles.contentStack}>
