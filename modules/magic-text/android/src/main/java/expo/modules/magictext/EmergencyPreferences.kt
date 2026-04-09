@@ -38,7 +38,7 @@ object EmergencyPreferences {
       "magicKeyword" to prefs.getString(KEY_MAGIC_KEYWORD, "#UNMUTE#"),
       "lastHandledCommandToken" to prefs.getString(KEY_LAST_HANDLED_TOKEN, null),
       "lastTriggerAt" to getNullableLong(prefs.getLong(KEY_LAST_TRIGGER_AT, -1L)),
-      "lastTriggerSource" to prefs.getString(KEY_LAST_TRIGGER_SOURCE, null),
+      "lastTriggerSource" to prefs.getString(KEY_LAST_TRIGGER_SOURCE, null)
     )
   }
 
@@ -47,7 +47,7 @@ object EmergencyPreferences {
     groupId: String,
     inviteCode: String,
     label: String,
-    vipNumbers: List<String>,
+    vipNumbers: List<String>
   ) {
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     prefs.edit()
@@ -89,14 +89,14 @@ object EmergencyPreferences {
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val serialized = prefs.getString(KEY_VIP_NUMBERS, "[]") ?: "[]"
     val parsed = JSONArray(serialized)
-    return buildList {
-      for (index in 0 until parsed.length()) {
-        val value = parsed.optString(index).trim()
-        if (value.isNotBlank()) {
-          add(value)
-        }
+    val vipNumbers = mutableListOf<String>()
+    for (index in 0 until parsed.length()) {
+      val value = parsed.optString(index).trim()
+      if (value.isNotBlank()) {
+        vipNumbers.add(value)
       }
     }
+    return vipNumbers
   }
 
   private fun getNullableLong(value: Long): Long? {

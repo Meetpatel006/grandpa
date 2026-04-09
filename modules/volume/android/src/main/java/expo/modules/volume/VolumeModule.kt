@@ -21,17 +21,17 @@ class VolumeModule : Module() {
       audioManager.setStreamVolume(
         AudioManager.STREAM_RING,
         audioManager.getStreamMaxVolume(AudioManager.STREAM_RING),
-        0,
+        0
       )
       audioManager.setStreamVolume(
         AudioManager.STREAM_NOTIFICATION,
         audioManager.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION),
-        0,
+        0
       )
       audioManager.setStreamVolume(
         AudioManager.STREAM_ALARM,
         audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM),
-        0,
+        0
       )
 
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&

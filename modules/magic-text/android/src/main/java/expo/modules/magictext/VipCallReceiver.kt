@@ -20,8 +20,9 @@ class VipCallReceiver : BroadcastReceiver() {
     }
 
     val vipNumbers = EmergencyPreferences.getVipNumbers(context)
+    val normalizedIncomingNumber = PhoneNumberUtils.normalizeNumber(incomingNumber)
     val isVip = vipNumbers.any { vip ->
-      PhoneNumberUtils.compare(context, vip, incomingNumber)
+      PhoneNumberUtils.normalizeNumber(vip) == normalizedIncomingNumber
     }
 
     if (isVip) {
