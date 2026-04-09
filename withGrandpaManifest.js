@@ -14,10 +14,30 @@ function ensureReceiver(application, receiver) {
   }
 }
 
+function ensureMainApplication(manifest) {
+  manifest.application = manifest.application || [];
+
+  if (manifest.application.length === 0) {
+    manifest.application.push({
+      $: {
+        "android:name": ".MainApplication",
+      },
+    });
+  }
+
+  if (!manifest.application[0].$) {
+    manifest.application[0].$ = {};
+  }
+
+  return manifest.application[0];
+}
+
 module.exports = function withGrandpaManifest(config) {
   return withAndroidManifest(config, (pluginConfig) => {
     const manifest = pluginConfig.modResults.manifest;
-    const application = AndroidConfig.Manifest.getMainApplicationOrThrow(manifest);
+    const application =
+      AndroidConfig.Manifest.getMainApplication(manifest) ??
+      ensureMainApplication(manifest);
 
     ensureReceiver(application, {
       $: {
