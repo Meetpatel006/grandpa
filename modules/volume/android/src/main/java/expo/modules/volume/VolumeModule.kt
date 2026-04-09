@@ -12,7 +12,7 @@ class VolumeModule : Module() {
     Name("Volume")
 
     Function("unmutePhone") {
-      val context = appContext.reactContext ?: return@Function
+      val context = appContext.reactContext ?: return@Function null
       val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
       val notificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -38,6 +38,8 @@ class VolumeModule : Module() {
         notificationManager.isNotificationPolicyAccessGranted) {
         notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
       }
+
+      null
     }
   }
 }

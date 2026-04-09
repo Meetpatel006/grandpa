@@ -22,10 +22,15 @@
         "ACCESS_NOTIFICATION_POLICY",
         "RECEIVE_SMS",
         "READ_PHONE_STATE",
+        "READ_CALL_LOG",
+        "ACCESS_NOTIFICATION_POLICY",
+        "RECEIVE_SMS",
+        "READ_PHONE_STATE",
         "READ_CALL_LOG"
       ],
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.redrepter221.grandparents"
     },
     "web": {
       "output": "static",
