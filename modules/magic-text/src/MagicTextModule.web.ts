@@ -1,19 +1,86 @@
-import { registerWebModule, NativeModule } from 'expo';
+import {
+  InstallationSnapshot,
+  ReceiverNativeConfig,
+  TriggerOverrideResult,
+} from "./MagicText.types";
 
-import { ChangeEventPayload } from './MagicText.types';
-
-type MagicTextModuleEvents = {
-  onChange: (params: ChangeEventPayload) => void;
-}
-
-class MagicTextModule extends NativeModule<MagicTextModuleEvents> {
-  PI = Math.PI;
-  async setValueAsync(value: string): Promise<void> {
-    this.emit('onChange', { value });
-  }
-  hello() {
-    return 'Hello world! 👋';
-  }
+let installationSnapshot: InstallationSnapshot = {
+  deviceId: "web-simulator",
+  receiverConfig: {
+    groupId: null,
+    inviteCode: null,
+    label: null,
+    vipNumbers: [],
+    magicKeyword: "#UNMUTE#",
+    lastHandledCommandToken: null,
+    lastTriggerAt: null,
+    lastTriggerSource: null,
+  },
 };
 
-export default registerWebModule(MagicTextModule, 'MagicTextModule');
+const MagicTextModule = {
+  async getInstallationSnapshotAsync() {
+    return installationSnapshot;
+  },
+  async saveReceiverConfigAsync(
+    groupId: string,
+    inviteCode: string,
+    label: string,
+    vipNumbers: string[],
+  ) {
+    installationSnapshot = {
+      ...installationSnapshot,
+      receiverConfig: {
+        ...installationSnapshot.receiverConfig,
+        groupId,
+        inviteCode,
+        label,
+        vipNumbers,
+      },
+    };
+    return installationSnapshot;
+  },
+  async clearReceiverConfigAsync() {
+    installationSnapshot = {
+      ...installationSnapshot,
+      receiverConfig: {
+        ...installationSnapshot.receiverConfig,
+        groupId: null,
+        inviteCode: null,
+        label: null,
+        vipNumbers: [],
+      },
+    };
+  },
+  async setLastHandledCommandTokenAsync(token: string) {
+    installationSnapshot = {
+      ...installationSnapshot,
+      receiverConfig: {
+        ...installationSnapshot.receiverConfig,
+        lastHandledCommandToken: token,
+      },
+    };
+  },
+  async triggerEmergencyOverrideAsync(source: string): Promise<TriggerOverrideResult> {
+    const triggeredAt = Date.now();
+    installationSnapshot = {
+      ...installationSnapshot,
+      receiverConfig: {
+        ...installationSnapshot.receiverConfig,
+        lastTriggerAt: triggeredAt,
+        lastTriggerSource: source,
+      },
+    };
+    return {
+      executed: true,
+      source,
+      triggeredAt,
+      reason: "Web shim executed.",
+    };
+  },
+  async getReceiverConfigAsync(): Promise<ReceiverNativeConfig> {
+    return installationSnapshot.receiverConfig;
+  },
+};
+
+export default MagicTextModule;

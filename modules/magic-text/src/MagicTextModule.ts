@@ -1,12 +1,24 @@
-import { NativeModule, requireNativeModule } from 'expo';
+import { NativeModule, requireNativeModule } from "expo";
 
-import { MagicTextModuleEvents } from './MagicText.types';
+import {
+  InstallationSnapshot,
+  MagicTextModuleEvents,
+  ReceiverNativeConfig,
+  TriggerOverrideResult,
+} from "./MagicText.types";
 
 declare class MagicTextModule extends NativeModule<MagicTextModuleEvents> {
-  PI: number;
-  hello(): string;
-  setValueAsync(value: string): Promise<void>;
+  getInstallationSnapshotAsync(): Promise<InstallationSnapshot>;
+  saveReceiverConfigAsync(
+    groupId: string,
+    inviteCode: string,
+    label: string,
+    vipNumbers: string[],
+  ): Promise<InstallationSnapshot>;
+  clearReceiverConfigAsync(): Promise<void>;
+  setLastHandledCommandTokenAsync(token: string): Promise<void>;
+  triggerEmergencyOverrideAsync(source: string): Promise<TriggerOverrideResult>;
+  getReceiverConfigAsync(): Promise<ReceiverNativeConfig>;
 }
 
-// This call loads the native module object from the JSI.
-export default requireNativeModule<MagicTextModule>('MagicText');
+export default requireNativeModule<MagicTextModule>("MagicText");

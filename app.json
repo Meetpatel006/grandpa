@@ -18,6 +18,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": [
+        "ACCESS_NOTIFICATION_POLICY",
+        "RECEIVE_SMS",
+        "READ_PHONE_STATE",
+        "READ_CALL_LOG"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -27,6 +33,7 @@
     },
     "plugins": [
       "expo-router",
+      "./withGrandpaManifest",
       [
         "expo-splash-screen",
         {
