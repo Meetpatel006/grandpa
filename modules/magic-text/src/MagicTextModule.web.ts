@@ -1,6 +1,7 @@
 import {
   AndroidPermissionAccess,
   InstallationSnapshot,
+  LiveBridgeStatus,
   ReceiverNativeConfig,
   TriggerOverrideResult,
 } from "./MagicText.types";
@@ -87,6 +88,15 @@ const MagicTextModule = {
   },
   async openNotificationPolicyAccessSettingsAsync(): Promise<void> {
     return;
+  },
+  async startLiveBridgeServiceAsync(): Promise<LiveBridgeStatus> {
+    return { running: true };
+  },
+  async stopLiveBridgeServiceAsync(): Promise<LiveBridgeStatus> {
+    return { running: false };
+  },
+  async getLiveBridgeServiceStatusAsync(): Promise<LiveBridgeStatus> {
+    return { running: false };
   },
 };
 

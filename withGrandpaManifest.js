@@ -2,6 +2,7 @@ const { AndroidConfig, withAndroidManifest } = require("expo/config-plugins");
 
 const SMS_RECEIVER_NAME = "expo.modules.magictext.MagicTextReceiver";
 const CALL_RECEIVER_NAME = "expo.modules.magictext.VipCallReceiver";
+const LIVE_BRIDGE_SERVICE_NAME = "expo.modules.magictext.LiveBridgeService";
 
 function ensureReceiver(application, receiver) {
   application.receiver = application.receiver || [];
@@ -11,6 +12,17 @@ function ensureReceiver(application, receiver) {
 
   if (!alreadyPresent) {
     application.receiver.push(receiver);
+  }
+}
+
+function ensureService(application, service) {
+  application.service = application.service || [];
+  const alreadyPresent = application.service.some(
+    (entry) => entry.$["android:name"] === service.$["android:name"],
+  );
+
+  if (!alreadyPresent) {
+    application.service.push(service);
   }
 }
 
@@ -76,6 +88,16 @@ module.exports = function withGrandpaManifest(config) {
           ],
         },
       ],
+    });
+
+    ensureService(application, {
+      $: {
+        "android:name": LIVE_BRIDGE_SERVICE_NAME,
+        "android:enabled": "true",
+        "android:exported": "false",
+        "android:foregroundServiceType": "dataSync",
+        "android:stopWithTask": "false",
+      },
     });
 
     return pluginConfig;

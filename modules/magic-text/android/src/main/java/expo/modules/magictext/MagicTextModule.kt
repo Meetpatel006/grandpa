@@ -4,6 +4,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
+import androidx.core.content.ContextCompat
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -64,6 +65,26 @@ class MagicTextModule : Module() {
       }
       context.startActivity(intent)
       null
+    }
+
+    AsyncFunction("startLiveBridgeServiceAsync") { label: String ->
+      val context = appContext.reactContext ?: throw IllegalStateException("Context unavailable.")
+      val intent = Intent(context, LiveBridgeService::class.java).apply {
+        putExtra(LiveBridgeService.EXTRA_LABEL, label)
+      }
+      ContextCompat.startForegroundService(context, intent)
+      mapOf("running" to true)
+    }
+
+    AsyncFunction("stopLiveBridgeServiceAsync") {
+      val context = appContext.reactContext ?: throw IllegalStateException("Context unavailable.")
+      val intent = Intent(context, LiveBridgeService::class.java)
+      context.stopService(intent)
+      mapOf("running" to false)
+    }
+
+    AsyncFunction("getLiveBridgeServiceStatusAsync") {
+      mapOf("running" to LiveBridgeServiceState.isRunning)
     }
   }
 }

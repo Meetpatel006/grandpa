@@ -25,6 +25,10 @@ export type AndroidPermissionAccess = {
   granted: boolean;
 };
 
+export type LiveBridgeStatus = {
+  running: boolean;
+};
+
 export type MagicTextViewProps = {
   url: string;
   onLoad: (event: { nativeEvent: { url: string } }) => void;

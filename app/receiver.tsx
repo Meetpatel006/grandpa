@@ -41,7 +41,9 @@ export default function ReceiverScreen() {
     sms: Platform.OS !== "android",
     phone: Platform.OS !== "android",
     callLog: Platform.OS !== "android",
+    notifications: Platform.OS !== "android",
     dnd: Platform.OS !== "android",
+    liveBridge: false,
   });
 
   const goToNumbers = () => {
@@ -76,12 +78,17 @@ export default function ReceiverScreen() {
     let active = true;
 
     void (async () => {
-      const [sms, phone, callLog, dnd] = await Promise.all([
+      const [sms, phone, callLog, dnd, liveBridge] = await Promise.all([
         PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECEIVE_SMS),
         PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE),
         PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_CALL_LOG),
         MagicTextModule.hasNotificationPolicyAccessAsync(),
+        MagicTextModule.getLiveBridgeServiceStatusAsync(),
       ]);
+      const notifications =
+        Platform.Version >= 33
+          ? await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS)
+          : true;
 
       if (!active) {
         return;
@@ -91,7 +98,9 @@ export default function ReceiverScreen() {
         sms,
         phone,
         callLog,
+        notifications,
         dnd: dnd.granted,
+        liveBridge: liveBridge.running,
       });
     })();
 
@@ -135,6 +144,23 @@ export default function ReceiverScreen() {
       clearInterval(interval);
     };
   }, [deviceId, heartbeat, session?.groupId]);
+
+  useEffect(() => {
+    if (Platform.OS !== "android" || !session?.groupId) {
+      return;
+    }
+
+    void (async () => {
+      const result = await MagicTextModule.startLiveBridgeServiceAsync(
+        receiverLabel.trim() || receiverConfig?.label || "Receiver device",
+      );
+
+      setAndroidAccess((current) => ({
+        ...current,
+        liveBridge: result.running,
+      }));
+    })();
+  }, [receiverConfig?.label, receiverLabel, session?.groupId]);
 
   useEffect(() => {
     if (!session?.groupId || !deviceId || !session.latestCommand) {
@@ -205,6 +231,9 @@ export default function ReceiverScreen() {
       PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
       PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
       PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
+      ...(Platform.Version >= 33
+        ? [PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS]
+        : []),
     ]);
 
     const dndAccess = await MagicTextModule.hasNotificationPolicyAccessAsync();
@@ -219,7 +248,12 @@ export default function ReceiverScreen() {
       callLog:
         permissionResult[PermissionsAndroid.PERMISSIONS.READ_CALL_LOG] ===
         PermissionsAndroid.RESULTS.GRANTED,
+      notifications:
+        Platform.Version < 33 ||
+        permissionResult[PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS] ===
+          PermissionsAndroid.RESULTS.GRANTED,
       dnd: dndAccess.granted,
+      liveBridge: androidAccess.liveBridge,
     };
 
     setAndroidAccess(nextAccess);
@@ -279,10 +313,11 @@ export default function ReceiverScreen() {
         label: receiverLabel.trim(),
         vipNumbers,
       });
+      await MagicTextModule.startLiveBridgeServiceAsync(receiverLabel.trim());
 
       Alert.alert(
         "Receiver connected",
-        "Realtime Convex sync is active. SMS and VIP call fallbacks are stored locally.",
+        "Realtime Convex sync is active. SMS and VIP call fallbacks are stored locally, and a sticky notification will keep the live bridge alive.",
       );
     } catch (error) {
       Alert.alert("Join failed", error instanceof Error ? error.message : "Try again.");
@@ -318,6 +353,9 @@ export default function ReceiverScreen() {
 
   const handleLeave = async () => {
     if (!session?.groupId || !deviceId) {
+      if (Platform.OS === "android") {
+        await MagicTextModule.stopLiveBridgeServiceAsync();
+      }
       await clearReceiverConfig();
       return;
     }
@@ -325,6 +363,7 @@ export default function ReceiverScreen() {
     setBusyAction("leave");
     try {
       await leaveGroup({ groupId: session.groupId, deviceId });
+      await MagicTextModule.stopLiveBridgeServiceAsync();
       await clearReceiverConfig();
     } catch (error) {
       Alert.alert("Leave failed", error instanceof Error ? error.message : "Try again.");
@@ -402,7 +441,16 @@ export default function ReceiverScreen() {
                   Phone: {androidAccess.phone ? "Granted" : "Missing"}
                 </Text>
                 <Text style={styles.statusLine}>
+                  Call log: {androidAccess.callLog ? "Granted" : "Missing"}
+                </Text>
+                <Text style={styles.statusLine}>
+                  Notifications: {androidAccess.notifications ? "Granted" : "Missing"}
+                </Text>
+                <Text style={styles.statusLine}>
                   DND: {androidAccess.dnd ? "Granted" : "Missing"}
+                </Text>
+                <Text style={styles.statusLine}>
+                  Sticky live bridge: {androidAccess.liveBridge ? "Running" : "Stopped"}
                 </Text>
                 <Pressable style={styles.secondaryButton} onPress={requestAndroidFallbackAccess}>
                   <Text style={styles.secondaryButtonText}>Request access</Text>

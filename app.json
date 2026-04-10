@@ -23,6 +23,9 @@
       },
       "permissions": [
         "ACCESS_NOTIFICATION_POLICY",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_DATA_SYNC",
+        "POST_NOTIFICATIONS",
         "RECEIVE_SMS",
         "READ_PHONE_STATE",
         "READ_CALL_LOG",
@@ -50,7 +53,10 @@
               "android.permission.RECEIVE_SMS",
               "android.permission.READ_PHONE_STATE",
               "android.permission.READ_CALL_LOG",
-              "android.permission.ACCESS_NOTIFICATION_POLICY"
+              "android.permission.ACCESS_NOTIFICATION_POLICY",
+              "android.permission.FOREGROUND_SERVICE",
+              "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+              "android.permission.POST_NOTIFICATIONS"
             ]
           }
         }
