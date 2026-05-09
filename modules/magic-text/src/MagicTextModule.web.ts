@@ -2,6 +2,7 @@ import {
   AndroidPermissionAccess,
   InstallationSnapshot,
   LiveBridgeStatus,
+  FcmTokenSnapshot,
   ReceiverNativeConfig,
   TriggerOverrideResult,
 } from "./MagicText.types";
@@ -89,7 +90,11 @@ const MagicTextModule = {
   async openNotificationPolicyAccessSettingsAsync(): Promise<void> {
     return;
   },
-  async startLiveBridgeServiceAsync(): Promise<LiveBridgeStatus> {
+  async startLiveBridgeServiceAsync(
+    _label?: string,
+    _deviceId?: string,
+    _siteUrl?: string,
+  ): Promise<LiveBridgeStatus> {
     return { running: true };
   },
   async stopLiveBridgeServiceAsync(): Promise<LiveBridgeStatus> {
@@ -97,6 +102,9 @@ const MagicTextModule = {
   },
   async getLiveBridgeServiceStatusAsync(): Promise<LiveBridgeStatus> {
     return { running: false };
+  },
+  async getFcmTokenAsync(): Promise<FcmTokenSnapshot> {
+    return { token: null };
   },
 };
 

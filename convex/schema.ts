@@ -5,6 +5,7 @@ export default defineSchema({
   installations: defineTable({
     deviceId: v.string(),
     displayName: v.optional(v.string()),
+    fcmToken: v.optional(v.string()),
     platform: v.string(),
     rolePreference: v.optional(v.union(v.literal("send"), v.literal("receive"))),
     updatedAt: v.number(),
@@ -56,7 +57,12 @@ export default defineSchema({
     targetMode: v.union(v.literal("all"), v.literal("specific")),
     targetDeviceIds: v.array(v.string()),
     createdAt: v.number(),
-    source: v.union(v.literal("convex"), v.literal("sms"), v.literal("vip_call")),
+    source: v.union(
+      v.literal("convex"),
+      v.literal("fcm"),
+      v.literal("sms"),
+      v.literal("vip_call"),
+    ),
   })
     .index("by_groupId_and_createdAt", ["groupId", "createdAt"])
     .index("by_token", ["token"]),

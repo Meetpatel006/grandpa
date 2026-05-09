@@ -9,6 +9,8 @@
  */
 
 import type * as emergency from "../emergency.js";
+import type * as http from "../http.js";
+import type * as push from "../push.js";
 
 import type {
   ApiFromModules,
@@ -18,6 +20,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   emergency: typeof emergency;
+  http: typeof http;
+  push: typeof push;
 }>;
 
 /**

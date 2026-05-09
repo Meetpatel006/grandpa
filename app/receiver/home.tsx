@@ -17,6 +17,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { mockReceiverData, mockReceiverSession } from "@/utils/mocks";
 
+const CONVEX_SITE_URL = process.env.EXPO_PUBLIC_CONVEX_SITE_URL ?? "";
 const USE_MOCK = false; // Set to true for testing with mock data
 const MOCK_CONNECTED = false;
 
@@ -171,6 +172,18 @@ export default function ReceiverHomeScreen() {
       setShowSetup(false);
     }
   }, [session]);
+
+  useEffect(() => {
+    if (Platform.OS !== "android" || !session?.groupId || !deviceId || !CONVEX_SITE_URL) {
+      return;
+    }
+
+    void MagicTextModule.startLiveBridgeServiceAsync(
+      session.receiverLabel || receiverConfig?.label || "Receiver device",
+      deviceId,
+      CONVEX_SITE_URL,
+    );
+  }, [deviceId, receiverConfig?.label, session?.groupId, session?.receiverLabel]);
 
   const requestAndroidFallbackAccess = async () => {
     if (Platform.OS !== "android") return true;

@@ -59,10 +59,32 @@ export function EmergencyProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    void upsertInstallation({
-      deviceId: snapshot.deviceId,
-      platform: Platform.OS,
-    });
+    void (async () => {
+      let fcmToken: string | undefined;
+      if (Platform.OS === "android") {
+        try {
+          const fcmSnapshot = await MagicTextModule.getFcmTokenAsync();
+          fcmToken = fcmSnapshot.token ?? undefined;
+        } catch {
+          fcmToken = undefined;
+        }
+      }
+
+      const installation: {
+        deviceId: string;
+        fcmToken?: string;
+        platform: string;
+      } = {
+        deviceId: snapshot.deviceId,
+        platform: Platform.OS,
+      };
+
+      if (fcmToken) {
+        installation.fcmToken = fcmToken;
+      }
+
+      await upsertInstallation(installation);
+    })();
   }, [snapshot?.deviceId, upsertInstallation]);
 
   const persistRolePreference = useCallback(

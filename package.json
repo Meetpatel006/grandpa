@@ -1,11 +1,14 @@
 {
   "name": "grandparents",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
+    "android:device": "powershell -ExecutionPolicy Bypass -File ./scripts/android-device.ps1",
+    "android:device:run": "powershell -ExecutionPolicy Bypass -File ./scripts/android-device.ps1 -Build -Install -Launch -ReverseMetro",
+    "android:device:logs": "powershell -ExecutionPolicy Bypass -File ./scripts/android-device.ps1 -Logs",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint"

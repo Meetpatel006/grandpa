@@ -10,6 +10,7 @@ async function upsertInstallationRecord(
   args: {
     deviceId: string;
     displayName?: string;
+    fcmToken?: string;
     platform: string;
     rolePreference?: RolePreference;
   },
@@ -19,13 +20,30 @@ async function upsertInstallationRecord(
     .withIndex("by_deviceId", (q) => q.eq("deviceId", args.deviceId))
     .unique();
 
-  const payload = {
+  const payload: {
+    deviceId: string;
+    displayName?: string;
+    fcmToken?: string;
+    platform: string;
+    rolePreference?: RolePreference;
+    updatedAt: number;
+  } = {
     deviceId: args.deviceId,
-    displayName: args.displayName,
     platform: args.platform,
-    rolePreference: args.rolePreference,
     updatedAt: Date.now(),
   };
+
+  if (args.displayName !== undefined) {
+    payload.displayName = args.displayName;
+  }
+
+  if (args.fcmToken !== undefined) {
+    payload.fcmToken = args.fcmToken;
+  }
+
+  if (args.rolePreference !== undefined) {
+    payload.rolePreference = args.rolePreference;
+  }
 
   if (existing) {
     await ctx.db.patch(existing._id, payload);
@@ -120,6 +138,7 @@ export const upsertInstallation = mutation({
   args: {
     deviceId: v.string(),
     displayName: v.optional(v.string()),
+    fcmToken: v.optional(v.string()),
     platform: v.string(),
     rolePreference: v.optional(v.union(v.literal("send"), v.literal("receive"))),
   },
@@ -343,7 +362,12 @@ export const acknowledgeCommand = mutation({
     groupId: v.id("groups"),
     deviceId: v.string(),
     token: v.string(),
-    source: v.union(v.literal("convex"), v.literal("sms"), v.literal("vip_call")),
+    source: v.union(
+      v.literal("convex"),
+      v.literal("fcm"),
+      v.literal("sms"),
+      v.literal("vip_call"),
+    ),
   },
   handler: async (ctx, args) => {
     const member = await getMember(ctx, args.groupId, args.deviceId);
@@ -375,6 +399,89 @@ export const acknowledgeCommand = mutation({
     }
 
     return { ok: true };
+  },
+});
+
+export const receiverPushTargets = query({
+  args: {
+    groupId: v.id("groups"),
+    targetMode: v.union(v.literal("all"), v.literal("specific")),
+    targetDeviceIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const members = await ctx.db
+      .query("groupMembers")
+      .withIndex("by_groupId", (q) => q.eq("groupId", args.groupId))
+      .take(50);
+
+    const targetDeviceIds = new Set(args.targetDeviceIds);
+    const receivers = members.filter(
+      (member) =>
+        member.role === "receiver" &&
+        (args.targetMode === "all" || targetDeviceIds.has(member.deviceId)),
+    );
+
+    const tokens: Array<{ deviceId: string; fcmToken: string }> = [];
+    for (const receiver of receivers) {
+      const installation = await ctx.db
+        .query("installations")
+        .withIndex("by_deviceId", (q) => q.eq("deviceId", receiver.deviceId))
+        .unique();
+
+      if (installation?.fcmToken) {
+        tokens.push({
+          deviceId: receiver.deviceId,
+          fcmToken: installation.fcmToken,
+        });
+      }
+    }
+
+    return tokens;
+  },
+});
+
+export const nativePendingCommand = query({
+  args: {
+    deviceId: v.string(),
+    lastHandledCommandToken: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const receiverMembership = await ctx.db
+      .query("groupMembers")
+      .withIndex("by_deviceId_and_role", (q) =>
+        q.eq("deviceId", args.deviceId).eq("role", "receiver"),
+      )
+      .unique();
+
+    if (!receiverMembership) {
+      return { command: null };
+    }
+
+    const group = await ctx.db.get(receiverMembership.groupId);
+    if (!group || group.status !== "active") {
+      return { command: null };
+    }
+
+    const latestCommand = await getLatestRelevantCommand(
+      ctx,
+      group._id,
+      args.deviceId,
+    );
+
+    if (
+      !latestCommand ||
+      latestCommand.token === receiverMembership.lastHandledCommandToken ||
+      latestCommand.token === args.lastHandledCommandToken
+    ) {
+      return { command: null };
+    }
+
+    return {
+      command: {
+        groupId: group._id,
+        token: latestCommand.token,
+      },
+    };
   },
 });
 

@@ -15,6 +15,9 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import MagicTextModule from "@/modules/magic-text";
+
+const CONVEX_SITE_URL = process.env.EXPO_PUBLIC_CONVEX_SITE_URL ?? "";
 
 interface ContactNumber {
   countryCode: string;
@@ -146,6 +149,14 @@ export default function ReceiverNumbersScreen() {
         label: receiverLabel.trim(),
         vipNumbers: getFullNumbers(),
       });
+
+      if (Platform.OS === "android" && CONVEX_SITE_URL) {
+        await MagicTextModule.startLiveBridgeServiceAsync(
+          receiverLabel.trim(),
+          deviceId,
+          CONVEX_SITE_URL,
+        );
+      }
 
       Alert.alert("Connected", "Receiver joined successfully.");
     } catch (error) {

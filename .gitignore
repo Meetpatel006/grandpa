@@ -42,3 +42,5 @@ app-example
 /ios
 /android
 build
+google-services*.json
+.agents

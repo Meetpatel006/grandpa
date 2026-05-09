@@ -29,6 +29,10 @@ export type LiveBridgeStatus = {
   running: boolean;
 };
 
+export type FcmTokenSnapshot = {
+  token: string | null;
+};
+
 export type MagicTextViewProps = {
   url: string;
   onLoad: (event: { nativeEvent: { url: string } }) => void;

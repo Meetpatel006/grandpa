@@ -17,6 +17,8 @@ import {
   View,
 } from "react-native";
 
+const CONVEX_SITE_URL = process.env.EXPO_PUBLIC_CONVEX_SITE_URL ?? "";
+
 export default function ReceiverScreen() {
   const router = useRouter();
   const {
@@ -151,8 +153,14 @@ export default function ReceiverScreen() {
     }
 
     void (async () => {
+      if (!deviceId || !CONVEX_SITE_URL) {
+        return;
+      }
+
       const result = await MagicTextModule.startLiveBridgeServiceAsync(
         receiverLabel.trim() || receiverConfig?.label || "Receiver device",
+        deviceId,
+        CONVEX_SITE_URL,
       );
 
       setAndroidAccess((current) => ({
@@ -160,7 +168,7 @@ export default function ReceiverScreen() {
         liveBridge: result.running,
       }));
     })();
-  }, [receiverConfig?.label, receiverLabel, session?.groupId]);
+  }, [deviceId, receiverConfig?.label, receiverLabel, session?.groupId]);
 
   useEffect(() => {
     if (!session?.groupId || !deviceId || !session.latestCommand) {
@@ -313,7 +321,13 @@ export default function ReceiverScreen() {
         label: receiverLabel.trim(),
         vipNumbers,
       });
-      await MagicTextModule.startLiveBridgeServiceAsync(receiverLabel.trim());
+      if (Platform.OS === "android" && CONVEX_SITE_URL) {
+        await MagicTextModule.startLiveBridgeServiceAsync(
+          receiverLabel.trim(),
+          deviceId,
+          CONVEX_SITE_URL,
+        );
+      }
 
       Alert.alert(
         "Receiver connected",

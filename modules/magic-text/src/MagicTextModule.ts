@@ -2,6 +2,7 @@ import { NativeModule, requireNativeModule } from "expo";
 
 import {
   AndroidPermissionAccess,
+  FcmTokenSnapshot,
   InstallationSnapshot,
   LiveBridgeStatus,
   MagicTextModuleEvents,
@@ -23,9 +24,14 @@ declare class MagicTextModule extends NativeModule<MagicTextModuleEvents> {
   getReceiverConfigAsync(): Promise<ReceiverNativeConfig>;
   hasNotificationPolicyAccessAsync(): Promise<AndroidPermissionAccess>;
   openNotificationPolicyAccessSettingsAsync(): Promise<void>;
-  startLiveBridgeServiceAsync(label: string): Promise<LiveBridgeStatus>;
+  startLiveBridgeServiceAsync(
+    label: string,
+    deviceId: string,
+    siteUrl: string,
+  ): Promise<LiveBridgeStatus>;
   stopLiveBridgeServiceAsync(): Promise<LiveBridgeStatus>;
   getLiveBridgeServiceStatusAsync(): Promise<LiveBridgeStatus>;
+  getFcmTokenAsync(): Promise<FcmTokenSnapshot>;
 }
 
 export default requireNativeModule<MagicTextModule>("MagicText");

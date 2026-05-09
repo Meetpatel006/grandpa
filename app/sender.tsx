@@ -1,6 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { useEmergency } from "@/providers/emergency-provider";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -29,7 +29,7 @@ export default function SenderScreen() {
   );
 
   const createGroup = useMutation(api.emergency.createGroup);
-  const sendUnmute = useMutation(api.emergency.sendUnmute);
+  const sendUnmute = useAction(api.push.sendUnmuteWithPush);
   const heartbeat = useMutation(api.emergency.heartbeat);
 
   useEffect(() => {
